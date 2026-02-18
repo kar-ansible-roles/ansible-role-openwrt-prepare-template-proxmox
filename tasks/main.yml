@@ -1,0 +1,137 @@
+---
+# tasks file for ansible-role-openwrt-installation-proxmox
+- name: OpenWrt installation preparing | Install proxmoxer, pexpect python package
+  ansible.builtin.apt:
+    name: 
+    - python3-proxmoxer
+    - python3-pexpect
+    state: present
+
+- name: OpenWrt installation preparing | Create WAN bridge vmbr0 in proxmox
+  community.proxmox.proxmox_node_network:
+    api_host: "{{ pm_host }}"
+    node: "{{ pm_node }}"
+    api_user: "{{ pm_user }}"
+    api_password: "{{ pm_password }}"
+    iface: vmbr0
+    bridge_ports: "{{ pm_phis_adapter }}"
+    autostart: true
+    comments: "WAN bridge, IP on VM, Proxmox without IP"
+    iface_type: bridge
+    bridge_vlan_aware: false
+    cidr: "{{ pm_external_cidr }}"
+    mtu: 1500
+    state: present
+
+- name: OpenWrt installation preparing | Create LAN bridge vmbr1 (Proxmox management / internal)
+  community.proxmox.proxmox_node_network:
+    api_host: "{{ pm_host }}"
+    node: "{{ pm_node }}"
+    api_user: "{{ pm_user }}"
+    api_password: "{{ pm_password }}"
+    iface: vmbr1
+    bridge_ports: ""
+    autostart: true
+    comments: "LAN bridge, IP for management"
+    iface_type: bridge
+    bridge_vlan_aware: false
+    cidr: "{{ pm_internal_cidr }}"
+    mtu: 1500
+    state: present
+    
+- name: OpenWrt installation preparing | Ensure static route persists
+  ansible.builtin.lineinfile:
+    path: /etc/network/interfaces
+    insertafter: "iface vmbr1"
+    line: "    post-up ip route add {{ wg_network }} via {{ openwrt_gateway_cidr }}"
+  when: planned_wireguard
+
+- name: OpenWrt installation preparing | Reboot Proxmox
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    test_command: whoami
+
+- name: OpenWrt installation preparing | Download openwrt.img.gz
+  get_url:
+    url: "https://downloads.openwrt.org/releases/{{ openwrt_version }}/targets/x86/64/openwrt-{{ openwrt_version }}-x86-64-generic-ext4-combined.img.gz"
+    dest: /tmp/openwrt.img.gz
+    mode: '0440'
+
+- name: OpenWrt installation preparing | Extract openwrt.img.gz into /tmp/openwrt.img
+  shell: gunzip -c /tmp/openwrt.img.gz > /tmp/openwrt.img
+  register: unzip_result
+  failed_when: unzip_result.rc not in [0,2]
+  args:
+    creates: /tmp/openwrt.img
+
+- name: OpenWrt installation preparing | Create new VM with external and internal network interfaces, 1 cores, and 256 memory
+  community.proxmox.proxmox_kvm:
+    api_host: "{{ pm_host }}"
+    node: "{{ pm_node }}"
+    api_user: "{{ pm_user }}"
+    api_password: "{{ pm_password }}"
+    name: openwrt-template
+    vmid: "{{ openwrt_template_id }}"
+    cores: 1
+    memory: 256
+    net:
+      net0: "virtio,bridge=vmbr1"
+      net1: "virtio,bridge=vmbr0,macaddr={{ openwrt_wan_mac }}"
+    serial:
+      serial0: socket
+    vga: std
+    bios: seabios
+    scsi:
+      scsi0: "file=local-lvm:0,import-from=/tmp/openwrt.img"
+    scsihw: virtio-scsi-pci
+    boot: "order=scsi0"
+    agent: true
+    state: present
+
+- name: "OpenWrt installation preparing | Started VM {{ openwrt_template_id }}"
+  community.proxmox.proxmox_kvm:
+    api_host: "{{ pm_host }}"
+    node: "{{ pm_node }}"
+    api_user: "{{ pm_user }}"
+    api_password: "{{ pm_password }}"
+    vmid: "{{ openwrt_template_id }}"
+    state: started
+
+- name: OpenWrt installation preparing | Manual firewall bootstrap required
+  pause:
+    prompt: |
+      SSH to OpenWRT is unavailable.
+      You need to connect to Proxmox via SSH, enter the command 'qm terminal {{openwrt_template_id }}' (after that 
+      the OpenWRT terminal appears, if it does not appear, press 'Enter') and manually execute:
+
+        uci set firewall.breach=rule
+        uci set firewall.breach.name='Allow-Admin'
+        uci set firewall.breach.enabled='true'
+        uci set firewall.breach.src='wan'
+        uci set firewall.breach.proto='tcp'
+        uci set firewall.breach.dest_port='22 80 443'
+        uci set firewall.breach.target='ACCEPT'
+        uci commit firewall
+        service firewall restart
+        opkg update
+        opkg install python3
+
+      After making the changes, press Enter to continue.
+
+- name: "OpenWrt installation preparing | Stopped VM {{ openwrt_template_id }}"
+  community.proxmox.proxmox_kvm:
+    api_host: "{{ pm_host }}"
+    node: "{{ pm_node }}"
+    api_user: "{{ pm_user }}"
+    api_password: "{{ pm_password }}"
+    vmid: "{{ openwrt_template_id }}"
+    state: stopped
+
+- name: OpenWrt installation preparing | Convert VM to template (stop VM if running)
+  community.proxmox.proxmox_kvm:
+    api_host: "{{ pm_host }}"
+    node: "{{ pm_node }}"
+    api_user: "{{ pm_user }}"
+    api_password: "{{ pm_password }}"
+    vmid: "{{ openwrt_template_id }}"
+    state: template

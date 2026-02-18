@@ -1,0 +1,21 @@
+galaxy_info:
+  role_name: openwrt_prepare_template_proxmox
+  author: karsak4747
+  description: The role is intended for creating a template for an openwrt virtual machine on proxmox virtualization manager, for further cloning. During creation, execution stops at some point, at which point it is necessary to follow the steps described in the terminal and resume execution. After completing the role, a template for an OpenWRT VM with open ports 22, 80, and 443 will appear on your proxmox.
+  company: Karo
+
+  license: MIT
+
+  min_ansible_version: 2.1
+  community_proxmox_version: 1.6.0
+
+
+  platform:
+    - name: Proxmox 9
+
+  galaxy_tags:
+    - openwrt
+    - proxmox
+    - template
+
+dependencies: []

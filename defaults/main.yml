@@ -1,0 +1,18 @@
+---
+# defaults file for ansible-role-openwrt-installation-proxmox
+openwrt_version: 24.10.5
+openwrt_template_id: 100
+openwrt_wan_mac: 01:23:45:67:89:01
+
+pm_host: "{{ ansible_host }}"
+pm_node: pve
+pm_user: root@pam
+pm_password: MyStrongPassword
+
+pm_phis_adapter: nic0
+pm_internal_cidr: 10.10.0.2/24
+pm_external_cidr: 192.168.1.2/24
+
+planned_wireguard: true
+wg_network: 10.10.10.0/24
+openwrt_gateway_cidr: 10.10.0.1
