@@ -13,6 +13,10 @@ pm_phis_adapter: nic0
 pm_internal_cidr: 10.10.0.2/24
 pm_external_cidr: 192.168.1.2/24
 
+
 planned_wireguard: true
 wg_network: 10.10.10.0/24
 openwrt_gateway_cidr: 10.10.0.1
+
+
+pm_bridge_vlan_aware: false

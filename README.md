@@ -23,11 +23,11 @@ Role Variables
 | `pm_password` | `MyStrongPassword` | Peoxmox password |
 | `pm_phis_adapter` | `nic0` | Phisical adapter? which Proxmox connect to internet |
 | `pm_internal_cidr` | `10.10.0.2/24` | IP address of Proxmox host in OpenWrt LAN network |
-
 | `pm_external_cidr` | `192.168.1.2/24` | IP address of Proxmox host in external office network |
 | `planned_wireguard` | `true` | If you plan install Wireguard on OpenWrt |
 | `wg_network` | `10.10.10.0/24` | Wireguard natework settings |
 | `openwrt_gateway_cidr` | `10.10.0.1` | IP address of OpenWrt in OpenWrt LAN network |
+| `pm_bridge_vlan_aware` | `false` | Do you need to use allow vlan from a phisical port? |
 
 Dependencies
 ------------

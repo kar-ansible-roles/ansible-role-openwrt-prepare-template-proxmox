@@ -18,10 +18,11 @@
     autostart: true
     comments: "WAN bridge, IP on VM, Proxmox without IP"
     iface_type: bridge
-    bridge_vlan_aware: false
+    bridge_vlan_aware: "{{ pm_bridge_vlan_aware }}"
     cidr: "{{ pm_external_cidr }}"
     mtu: 1500
     state: present
+    
 
 - name: OpenWrt installation preparing | Create LAN bridge vmbr1 (Proxmox management / internal)
   community.proxmox.proxmox_node_network:
@@ -38,6 +39,7 @@
     cidr: "{{ pm_internal_cidr }}"
     mtu: 1500
     state: present
+
     
 - name: OpenWrt installation preparing | Ensure static route persists
   ansible.builtin.lineinfile:
